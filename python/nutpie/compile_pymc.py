@@ -4,13 +4,13 @@ import warnings
 from dataclasses import dataclass
 from importlib.util import find_spec
 from math import prod
-from typing import TYPE_CHECKING, Any, Literal, Optional
+from typing import TYPE_CHECKING, Any, Callable, Literal, Optional, cast
 
 import numpy as np
 import pandas as pd
 from numpy.typing import NDArray
 
-from nutpie import _lib
+from nutpie import _lib  # type: ignore
 from nutpie.compiled_pyfunc import from_pyfunc
 from nutpie.sample import CompiledModel
 
@@ -201,7 +201,7 @@ def _compile_pymc_model_numba(model: "pm.Model", **kwargs) -> CompiledPyMCModel:
         warnings.filterwarnings(
             "ignore",
             message="Cannot cache compiled function .* as it uses dynamic globals",
-            category=numba.NumbaWarning,
+            category=numba.NumbaWarning,  # type: ignore
         )
 
         logp_numba = numba.cfunc(c_sig, **kwargs)(logp_numba_raw)
@@ -214,7 +214,7 @@ def _compile_pymc_model_numba(model: "pm.Model", **kwargs) -> CompiledPyMCModel:
         warnings.filterwarnings(
             "ignore",
             message="Cannot cache compiled function .* as it uses dynamic globals",
-            category=numba.NumbaWarning,
+            category=numba.NumbaWarning,  # type: ignore
         )
 
         expand_numba = numba.cfunc(c_sig_expand, **kwargs)(expand_numba_raw)
