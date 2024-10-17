@@ -17,6 +17,8 @@ class PyFuncModel(CompiledModel):
     _n_dim: int
     _variables: list[_lib.PyVariable]
     _coords: dict[str, Any]
+    _make_transform_adapter: Callable | None
+    _raw_logp_fn: Callable | None
 
     @property
     def shapes(self) -> dict[str, tuple[int, ...]]:
@@ -57,11 +59,19 @@ class PyFuncModel(CompiledModel):
             expand_fn = self._make_expand_func(seed1, seed2, chain)
             return partial(expand_fn, **self._shared_data)
 
+        if self._make_transform_adapter is not None:
+            make_transform_adapter = partial(
+                self._make_transform_adapter, logp_fn=self._raw_logp_fn
+            )
+        else:
+            make_transform_adapter = None
+
         return _lib.PyModel(
             make_logp_func,
             make_expand_func,
             self._variables,
             self.n_dim,
+            make_transform_adapter,
         )
 
 
@@ -77,6 +87,8 @@ def from_pyfunc(
     coords: dict[str, Any] | None = None,
     dims: dict[str, tuple[str, ...]] | None = None,
     shared_data: dict[str, Any] | None = None,
+    make_transform_adapter=None,
+    raw_logp_fn=None,
 ):
     variables = []
     for name, shape, dtype in zip(
@@ -98,8 +110,6 @@ def from_pyfunc(
     if shared_data is None:
         shared_data = {}
 
-    if shared_data is None:
-        shared_data = dict()
     return PyFuncModel(
         _n_dim=ndim,
         dims=dims,
@@ -108,4 +118,6 @@ def from_pyfunc(
         _make_expand_func=make_expand_fn,
         _variables=variables,
         _shared_data=shared_data,
+        _make_transform_adapter=make_transform_adapter,
+        _raw_logp_fn=raw_logp_fn,
     )
