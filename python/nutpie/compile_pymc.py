@@ -347,12 +347,13 @@ def _compile_pymc_model_jax(model, *, gradient_backend=None, **kwargs):
     dims, coords = _prepare_dims_and_coords(model, shape_info)
 
     return from_pyfunc(
-        n_dim,
-        make_logp_func,
-        make_expand_func,
-        dtypes,
-        shapes,
-        names,
+        ndim=n_dim,
+        make_logp_fn=make_logp_func,
+        make_expand_fn=make_expand_func,
+        make_initial_point_fn=make_initial_point_fn,
+        expanded_dtypes=dtypes,
+        expanded_shapes=shapes,
+        expanded_names=names,
         shared_data=shared_data,
         dims=dims,
         coords=coords,
@@ -512,6 +513,9 @@ def _make_functions(
         with model:
             logp_fn_pt = compile_pymc((joined,), (logp,), mode=mode)
 
+    # Make function to draw from the prior
+    init_point_fn_pt = make_initial_point_fn()
+
     # Make function that computes remaining variables for the trace
     remaining_rvs = [
         var for var in model.unobserved_value_vars if var.name not in joined_names
@@ -550,6 +554,7 @@ def _make_functions(
         num_expanded,
         logp_fn_pt,
         expand_fn_pt,
+        init_point_fn_pt,
         (all_names, all_slices, all_shapes),
     )
 

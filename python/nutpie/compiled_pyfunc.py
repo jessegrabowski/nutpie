@@ -13,6 +13,7 @@ from nutpie.transform_adapter import make_transform_adapter
 class PyFuncModel(CompiledModel):
     _make_logp_func: Callable
     _make_expand_func: Callable
+    _make_initial_points: Callable[RandomGenerator, np.ndarray]
     _shared_data: dict[str, Any]
     _n_dim: int
     _variables: list[_lib.PyVariable]
@@ -86,6 +87,7 @@ def from_pyfunc(
     ndim: int,
     make_logp_fn: Callable,
     make_expand_fn: Callable,
+    make_initial_point_fn: Callable[RandomGenerator, np.ndarray],
     expanded_dtypes: list[np.dtype],
     expanded_shapes: list[tuple[int, ...]],
     expanded_names: list[str],
@@ -123,6 +125,7 @@ def from_pyfunc(
         _coords=coords,
         _make_logp_func=make_logp_fn,
         _make_expand_func=make_expand_fn,
+        _make_initial_points=make_initial_point_fn,
         _variables=variables,
         _shared_data=shared_data,
         _raw_logp_fn=raw_logp_fn,
