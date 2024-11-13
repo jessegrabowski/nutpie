@@ -12,13 +12,48 @@ def make_transform_adapter(
     untransformed_dim=None,
     zero_init=True,
 ):
+    """
+    Configure the normalizing flows
+
+    Parameters
+    ----------
+    verbose: bool, default False
+        If True, print console messages about loss. Warning: This gets spammy fast with multiple chains
+    window_size: int
+
+    show_progress: bool, default False
+        Show a progress bar for each SGD optimization run
+    nn_depth: int, default 1
+        Number of hidden layers in each normalizing flow layer
+    nn_width: int, optional
+        Width of the neural network. Trades computation cost during optimizaiton for better normalizing
+        flows. Can lead to problems if the number of parameters grows too much -- you may need to increase
+        tuning steps to fit them.
+
+        If None, this is set to half the number of parameters being estimated in the posterior
+    num_layers: int, deafult 8
+        The number of normalizing flow layers. More layers leads to more numerical instability, but more
+        freedom in the functional approximation.
+    num_diag_windows
+    learning_rate: float, default 1e-3
+        Learning rate for the ADAM optimizer used in the normalizing flow optimization
+    scale_layer: False
+        Experimental, currently unused
+    untransformed_dim: int, optional
+        How many posterior parameters are passed unchanged in each flow layer.
+    zero_init: bool, default True
+        Experimental, if True it will initialize the network neurons with a small random value.
+
+    Returns
+    -------
+
+    """
     import jax
     import equinox as eqx
     import jax.numpy as jnp
     import flowjax
     import flowjax.train
     import flowjax.flows
-    from flowjax.bijections import mvscale
     import optax
     import traceback
     from paramax import Parameterize, unwrap
@@ -152,6 +187,7 @@ def make_transform_adapter(
                 nn_width=width,
                 nn_depth=nn_depth,
             )
+
             if zero_init:
                 coupling = jax.tree_util.tree_map(
                     lambda x: x * 1e-3 if eqx.is_inexact_array(x) else x,
@@ -165,8 +201,6 @@ def make_transform_adapter(
 
             if scale_layer:
                 bijections = list(flow.bijections)
-                bijections.append(mvscale.MvScale4(jnp.ones(n_dim) * 1e-5))
-                # bijections.append(mvscale.MvScale3(jnp.ones(n_dim) * 1e-5))
                 flow = flowjax.bijections.Chain(bijections)
 
             return flow
