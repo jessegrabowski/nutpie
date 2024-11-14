@@ -31,6 +31,7 @@ dependencies = [
 stan = ["bridgestan >= 2.4.1"]
 pymc = ["pymc >= 5.15.0", "numba >= 0.59.1"]
 pymc-jax = ["pymc >= 5.15.0", "jax >= 0.4.27"]
+flow = ["jax >= 0.4.27", "jaxlib >= 0.1.71", "equinox>=0.11.8", "flowjax>=16.0.0", "optax>=0.2.3", "paramax>=0.0.0"]
 all = [
   "bridgestan >= 2.4.1",
   "pymc >= 5.15.0",
