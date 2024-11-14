@@ -2,6 +2,7 @@ import dataclasses
 import itertools
 import warnings
 from dataclasses import dataclass
+from functools import partial
 from importlib.util import find_spec
 from math import prod
 from typing import TYPE_CHECKING, Any, Callable, Literal, Optional, cast
@@ -283,7 +284,7 @@ def _compile_pymc_model_jax(model, *, gradient_backend=None, **kwargs):
         _,
         logp_fn_pt,
         expand_fn_pt,
-        initial_fn_pt,
+        make_initial_point_py,
         shape_info,
     ) = _make_functions(
         model,
@@ -352,7 +353,7 @@ def _compile_pymc_model_jax(model, *, gradient_backend=None, **kwargs):
         ndim=n_dim,
         make_logp_fn=make_logp_func,
         make_expand_fn=make_expand_func,
-        make_initial_point_fn=initial_fn_pt,
+        make_initial_point_fn=make_initial_point_py,
         expanded_dtypes=dtypes,
         expanded_shapes=shapes,
         expanded_names=names,
@@ -472,7 +473,7 @@ def _make_functions(
     expand_fn_pt: Callable
         Compiled pytensor function that computes the remaining variables for the trace
     init_point_fn_pt: Callable
-        Compiled pytensor function that returns the initial point for the trace
+        ...
     param_data: tuple of lists
         Tuple containing data necessary to unravel a flat array of model variables back into a ragged list of arrays.
         The first list contains the names of the variables, the second list contains the slices that correspond to the
@@ -551,8 +552,9 @@ def _make_functions(
         with model:
             logp_fn_pt = compile_pymc((joined,), (logp,), mode=mode)
 
-    init_point_fn_pt = make_initial_point_fn(model=model,
-                                             return_transformed=True)
+    make_initial_point_py = partial(make_initial_point_fn,
+                                    model=model,
+                                    return_transformed=True)
 
     # Make function that computes remaining variables for the trace
     remaining_rvs = [
@@ -592,7 +594,7 @@ def _make_functions(
         num_expanded,
         logp_fn_pt,
         expand_fn_pt,
-        init_point_fn_pt,
+        make_initial_point_py,
         (all_names, all_slices, all_shapes),
     )
 

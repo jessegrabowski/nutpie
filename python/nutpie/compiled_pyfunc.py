@@ -1,7 +1,7 @@
 import dataclasses
 from dataclasses import dataclass
 from functools import partial
-from typing import Any, Callable
+from typing import Any, Callable, Literal, TYPE_CHECKING, Union
 
 import numpy as np
 
@@ -9,11 +9,19 @@ from nutpie import _lib  # type: ignore
 from nutpie.sample import CompiledModel
 from nutpie.transform_adapter import make_transform_adapter
 
+
+SeedType = int | float | np.random.Generator | None
+
+
+if TYPE_CHECKING:
+    from pytensor.tensor import TensorVariable, Variable
+
+
 @dataclass(frozen=True)
 class PyFuncModel(CompiledModel):
     _make_logp_func: Callable
     _make_expand_func: Callable
-    _make_initial_points: Callable[RandomGenerator, np.ndarray]
+    _make_initial_points: Callable[[SeedType], np.ndarray]
     _shared_data: dict[str, Any]
     _n_dim: int
     _variables: list[_lib.PyVariable]
@@ -87,12 +95,14 @@ def from_pyfunc(
     ndim: int,
     make_logp_fn: Callable,
     make_expand_fn: Callable,
-    make_initial_point_fn: Callable[RandomGenerator, np.ndarray],
+    make_initial_point_fn: Callable[[Any, Any, Any], Callable[[SeedType], np.ndarray]],
     expanded_dtypes: list[np.dtype],
     expanded_shapes: list[tuple[int, ...]],
     expanded_names: list[str],
     *,
-    initial_mean: np.ndarray | None = None,
+    initial_values: dict[Union["Variable", str], np.ndarray | float | int] | None = None,
+    jitter_rvs: set["TensorVariable"] | None = None,
+    default_initialization: Literal["support_point", "prior"] = "support_point",
     coords: dict[str, Any] | None = None,
     dims: dict[str, tuple[str, ...]] | None = None,
     shared_data: dict[str, Any] | None = None,
@@ -119,13 +129,17 @@ def from_pyfunc(
     if shared_data is None:
         shared_data = {}
 
+    initial_point_fn = make_initial_point_fn(overrides=initial_values,
+                                             default_strategy=default_initialization,
+                                             jitter_rvs=jitter_rvs)
+
     return PyFuncModel(
         _n_dim=ndim,
         dims=dims,
         _coords=coords,
         _make_logp_func=make_logp_fn,
         _make_expand_func=make_expand_fn,
-        _make_initial_points=make_initial_point_fn,
+        _make_initial_points=initial_point_fn,
         _variables=variables,
         _shared_data=shared_data,
         _raw_logp_fn=raw_logp_fn,
