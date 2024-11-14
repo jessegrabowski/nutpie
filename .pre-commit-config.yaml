@@ -19,5 +19,6 @@ repos:
     rev: v0.5.5
     hooks:
       - id: ruff
-        args: ["--fix", "--output-format=full"]
+        args: [--fix, --output-format=full, --exit-non-zero-on-fix]
       - id: ruff-format
+        types_or: [ python, pyi, jupyter ]

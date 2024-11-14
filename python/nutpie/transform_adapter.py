@@ -48,18 +48,18 @@ def make_transform_adapter(
     -------
 
     """
-    import jax
-    import equinox as eqx
-    import jax.numpy as jnp
-    import flowjax
-    import flowjax.train
-    import flowjax.flows
-    import optax
     import traceback
-    from paramax import Parameterize, unwrap
     from functools import partial
 
+    import equinox as eqx
+    import flowjax
+    import flowjax.flows
+    import flowjax.train
+    import jax
+    import jax.numpy as jnp
     import numpy as np
+    import optax
+    from paramax import Parameterize, unwrap
 
     class FisherLoss:
         @eqx.filter_jit

@@ -77,9 +77,7 @@ class CompiledPyMCModel(CompiledModel):
             new_val = np.asarray(new_val, dtype=old_val.dtype).copy()
             new_val.flags.writeable = False
             if old_val.ndim != new_val.ndim:
-                raise ValueError(
-                    f"Shared variable {name} must have rank {old_val.ndim}"
-                )
+                raise ValueError(f"Shared variable {name} must have rank {old_val.ndim}")
             shared_data[name] = new_val
         user_data = update_user_data(user_data, shared_data)
 
@@ -144,10 +142,7 @@ def make_user_data(shared_vars, shared_data):
                     ("size", [(var_name, np.uintp) for var_name in shared_vars]),
                     (
                         "shape",
-                        [
-                            (var_name, np.uint, (var.ndim,))
-                            for var_name, var in shared_vars.items()
-                        ],
+                        [(var_name, np.uint, (var.ndim,)) for var_name, var in shared_vars.items()],
                     ),
                 ],
             )
@@ -305,7 +300,7 @@ def _compile_pymc_model_jax(model, *, gradient_backend=None, **kwargs):
         def logp_fn_jax_grad(x, *shared):
             return jax.value_and_grad(lambda x: orig_logp_fn(x, *shared)[0])(x)
 
-        static_argnums = list(range(1, len(logp_shared_names) + 1))
+        # static_argnums = list(range(1, len(logp_shared_names) + 1))
         logp_fn_jax_grad = jax.jit(
             logp_fn_jax_grad,
             # static_argnums=static_argnums,
@@ -403,9 +398,7 @@ def compile_pymc_model(
     if backend.lower() == "numba":
         return _compile_pymc_model_numba(model, **kwargs)
     elif backend.lower() == "jax":
-        return _compile_pymc_model_jax(
-            model, gradient_backend=gradient_backend, **kwargs
-        )
+        return _compile_pymc_model_jax(model, gradient_backend=gradient_backend, **kwargs)
     else:
         raise ValueError(f"Backend must be one of numba and jax. Got {backend}")
 
@@ -427,11 +420,7 @@ def _compute_shapes(model) -> dict[str, tuple[int, ...]]:
         outputs=[var.shape for var in trace_vars.values()],
         givens=(
             [(obs, model.rvs_to_values[obs]) for obs in model.observed_RVs]
-            + [
-                (trace_vars[name], point[name])
-                for name in trace_vars.keys()
-                if name in point
-            ]
+            + [(trace_vars[name], point[name]) for name in trace_vars.keys() if name in point]
         ),
         mode=pytensor.compile.mode.FAST_COMPILE,
         on_unused_input="ignore",
@@ -442,8 +431,12 @@ def _compute_shapes(model) -> dict[str, tuple[int, ...]]:
 def _make_functions(
     model, *, mode, compute_grad, join_expanded
 ) -> tuple[
-    int, int, Callable, Callable, Callable,
-    tuple[list[str], list[slice], list[tuple[int, ...]]]
+    int,
+    int,
+    Callable,
+    Callable,
+    Callable,
+    tuple[list[str], list[slice], list[tuple[int, ...]]],
 ]:
     """
     Compile functions required by nuts-rs from a given PyMC model.
@@ -455,11 +448,11 @@ def _make_functions(
     mode: str
         Pytensor compile mode. One of "NUMBA" or "JAX"
     compute_grad: bool
-        Whether to compute gradients using pytensor. Must be True if mode is "NUMBA", otherwise False implies
-        Jax will be used to compute gradients
+        Whether to compute gradients using pytensor. Must be True if mode is "NUMBA".
+        False implies Jax will be used to compute gradients
     join_expanded: bool
-        Whether to join the expanded variables into a single array. If False, the expanded variables will be returned
-        as a list of arrays.
+        Whether to join the expanded variables into a single array. If False, the expanded
+        variables will be returned as a list of arrays.
 
     Returns
     -------
@@ -468,21 +461,22 @@ def _make_functions(
     num_expanded: int
         Total number of all random variables (root and dependent) in the model
     logp_fn_pt: Callable
-        Compiled pytensor log probability function. If compute_grad is True, the function will return both the logp
-        and the gradient, otherwise only the logp is returned.
+        Compiled pytensor log probability function. If compute_grad is True, the function will return
+        both the logp and the gradient, otherwise only the logp is returned.
     expand_fn_pt: Callable
         Compiled pytensor function that computes the remaining variables for the trace
     init_point_fn_pt: Callable
         ...
     param_data: tuple of lists
-        Tuple containing data necessary to unravel a flat array of model variables back into a ragged list of arrays.
-        The first list contains the names of the variables, the second list contains the slices that correspond to the
-        variables in the flat array, and the third list contains the shapes of the variables.
+        Tuple containing data necessary to unravel a flat array of model variables back into a
+        ragged list of arrays. The first list contains the names of the variables, the second list
+        contains the slices that correspond to the variables in the flat array, and the third list
+        contains the shapes of the variables.
     """
     import pytensor
     import pytensor.tensor as pt
-    from pymc.pytensorf import compile_pymc
     from pymc.initial_point import make_initial_point_fn
+    from pymc.pytensorf import compile_pymc
 
     shapes = _compute_shapes(model)
 
@@ -524,9 +518,7 @@ def _make_functions(
 
     num_free_vars = count
 
-    joined = pt.TensorType("float64", shape=(num_free_vars,))(
-        name="_unconstrained_point"
-    )
+    joined = pt.TensorType("float64", shape=(num_free_vars,))(name="_unconstrained_point")
 
     use_split = False
     if use_split:
@@ -552,14 +544,10 @@ def _make_functions(
         with model:
             logp_fn_pt = compile_pymc((joined,), (logp,), mode=mode)
 
-    make_initial_point_py = partial(make_initial_point_fn,
-                                    model=model,
-                                    return_transformed=True)
+    make_initial_point_py = partial(make_initial_point_fn, model=model, return_transformed=True)
 
     # Make function that computes remaining variables for the trace
-    remaining_rvs = [
-        var for var in model.unobserved_value_vars if var.name not in joined_names
-    ]
+    remaining_rvs = [var for var in model.unobserved_value_vars if var.name not in joined_names]
 
     all_names = joined_names + remaining_rvs
 
@@ -735,9 +723,7 @@ def _make_c_logp_func(n_dim, logp_fn, user_data, shared_logp, shared_data):
     return logp_numba, c_sig
 
 
-def _make_c_expand_func(
-    n_dim, n_expanded, expand_fn, user_data, shared_vars, shared_data
-):
+def _make_c_expand_func(n_dim, n_expanded, expand_fn, user_data, shared_vars, shared_data):
     import numba
 
     extract = make_extraction_fn(expand_fn, shared_data, shared_vars, user_data.dtype)

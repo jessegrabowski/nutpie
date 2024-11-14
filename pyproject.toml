@@ -31,7 +31,12 @@ dependencies = [
 stan = ["bridgestan >= 2.4.1"]
 pymc = ["pymc >= 5.15.0", "numba >= 0.59.1"]
 pymc-jax = ["pymc >= 5.15.0", "jax >= 0.4.27"]
-flow = ["jax >= 0.4.27", "jaxlib >= 0.1.71", "equinox>=0.11.8", "flowjax>=16.0.0", "optax>=0.2.3", "paramax>=0.0.0"]
+flow = ["jax >= 0.4.27",
+       "jaxlib >= 0.1.71",
+        "equinox>=0.11.8",
+        "flowjax>=16.0.0",
+        "optax>=0.2.3",
+        "paramax>=0.0.0"]
 all = [
   "bridgestan >= 2.4.1",
   "pymc >= 5.15.0",
@@ -40,7 +45,7 @@ all = [
 ]
 
 [tool.ruff]
-line-length = 88
+line-length = 100
 target-version = "py39"
 show-fixes = true
 output-format = "full"
@@ -68,6 +73,7 @@ ignore = [
   "E111",   # indentation-with-invalid-multiple
   "E114",   # indentation-with-invalid-multiple-comment
   "E117",   # over-indented
+  "E501",   # line-length exceeded
   "D206",   # indent-with-spaces
   "D300",   # triple-single-quotes
   "Q000",   # bad-quotes-inline-string

@@ -1,14 +1,13 @@
 import dataclasses
 from dataclasses import dataclass
 from functools import partial
-from typing import Any, Callable, Literal, TYPE_CHECKING, Union
+from typing import TYPE_CHECKING, Any, Callable, Literal, Union
 
 import numpy as np
 
 from nutpie import _lib  # type: ignore
 from nutpie.sample import CompiledModel
 from nutpie.transform_adapter import make_transform_adapter
-
 
 SeedType = int | float | np.random.Generator | None
 
@@ -110,9 +109,7 @@ def from_pyfunc(
     raw_logp_fn=None,
 ):
     variables = []
-    for name, shape, dtype in zip(
-        expanded_names, expanded_shapes, expanded_dtypes, strict=True
-    ):
+    for name, shape, dtype in zip(expanded_names, expanded_shapes, expanded_dtypes, strict=True):
         shape = _lib.TensorShape(list(shape))
         if dtype == np.float64:
             dtype = _lib.ExpandDtype.float64_array(shape)
@@ -129,9 +126,11 @@ def from_pyfunc(
     if shared_data is None:
         shared_data = {}
 
-    initial_point_fn = make_initial_point_fn(overrides=initial_values,
-                                             default_strategy=default_initialization,
-                                             jitter_rvs=jitter_rvs)
+    initial_point_fn = make_initial_point_fn(
+        overrides=initial_values,
+        default_strategy=default_initialization,
+        jitter_rvs=jitter_rvs,
+    )
 
     return PyFuncModel(
         _n_dim=ndim,
