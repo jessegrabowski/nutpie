@@ -172,6 +172,7 @@ def _compile_pymc_model_numba(model: "pm.Model", **kwargs) -> CompiledPyMCModel:
         n_expanded,
         logp_fn_pt,
         expand_fn_pt,
+        initial_fn_pt,
         shape_info,
     ) = _make_functions(model, mode="NUMBA", compute_grad=True, join_expanded=True)
 
@@ -282,6 +283,7 @@ def _compile_pymc_model_jax(model, *, gradient_backend=None, **kwargs):
         _,
         logp_fn_pt,
         expand_fn_pt,
+        initial_fn_pt,
         shape_info,
     ) = _make_functions(
         model,
@@ -350,7 +352,7 @@ def _compile_pymc_model_jax(model, *, gradient_backend=None, **kwargs):
         ndim=n_dim,
         make_logp_fn=make_logp_func,
         make_expand_fn=make_expand_func,
-        make_initial_point_fn=make_initial_point_fn,
+        make_initial_point_fn=initial_fn_pt,
         expanded_dtypes=dtypes,
         expanded_shapes=shapes,
         expanded_names=names,
@@ -439,11 +441,47 @@ def _compute_shapes(model) -> dict[str, tuple[int, ...]]:
 def _make_functions(
     model, *, mode, compute_grad, join_expanded
 ) -> tuple[
-    int, int, Callable, Callable, tuple[list[str], list[slice], list[tuple[int, ...]]]
+    int, int, Callable, Callable, Callable,
+    tuple[list[str], list[slice], list[tuple[int, ...]]]
 ]:
+    """
+    Compile functions required by nuts-rs from a given PyMC model.
+
+    Parameters
+    ----------
+    model: pymc.Model
+        The model to compile
+    mode: str
+        Pytensor compile mode. One of "NUMBA" or "JAX"
+    compute_grad: bool
+        Whether to compute gradients using pytensor. Must be True if mode is "NUMBA", otherwise False implies
+        Jax will be used to compute gradients
+    join_expanded: bool
+        Whether to join the expanded variables into a single array. If False, the expanded variables will be returned
+        as a list of arrays.
+
+    Returns
+    -------
+    num_free_vars: int
+        Number of free (root) random variables in the model
+    num_expanded: int
+        Total number of all random variables (root and dependent) in the model
+    logp_fn_pt: Callable
+        Compiled pytensor log probability function. If compute_grad is True, the function will return both the logp
+        and the gradient, otherwise only the logp is returned.
+    expand_fn_pt: Callable
+        Compiled pytensor function that computes the remaining variables for the trace
+    init_point_fn_pt: Callable
+        Compiled pytensor function that returns the initial point for the trace
+    param_data: tuple of lists
+        Tuple containing data necessary to unravel a flat array of model variables back into a ragged list of arrays.
+        The first list contains the names of the variables, the second list contains the slices that correspond to the
+        variables in the flat array, and the third list contains the shapes of the variables.
+    """
     import pytensor
     import pytensor.tensor as pt
     from pymc.pytensorf import compile_pymc
+    from pymc.initial_point import make_initial_point_fn
 
     shapes = _compute_shapes(model)
 
@@ -513,8 +551,8 @@ def _make_functions(
         with model:
             logp_fn_pt = compile_pymc((joined,), (logp,), mode=mode)
 
-    # Make function to draw from the prior
-    init_point_fn_pt = make_initial_point_fn()
+    init_point_fn_pt = make_initial_point_fn(model=model,
+                                             return_transformed=True)
 
     # Make function that computes remaining variables for the trace
     remaining_rvs = [
